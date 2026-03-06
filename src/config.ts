@@ -4,7 +4,10 @@ import {
   PublicKey,
   clusterApiUrl,
 } from "@solana/web3.js";
+import { getAssociatedTokenAddress } from "@solana/spl-token";
 import bs58 from "bs58";
+
+let cachedKeypair: Keypair | null = null;
 
 export const USDC_MINT: Record<string, string> = {
   mainnet: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
@@ -45,6 +48,10 @@ export function getConnection(network: SolanaNetwork): Connection {
 }
 
 export function getKeypair(): Keypair {
+  if (cachedKeypair) {
+    return cachedKeypair;
+  }
+
   const key = process.env.SOLANA_PRIVATE_KEY;
   if (!key) {
     throw new Error(
@@ -52,7 +59,8 @@ export function getKeypair(): Keypair {
     );
   }
   try {
-    return Keypair.fromSecretKey(bs58.decode(key));
+    cachedKeypair = Keypair.fromSecretKey(bs58.decode(key));
+    return cachedKeypair;
   } catch {
     throw new Error(
       "Invalid SOLANA_PRIVATE_KEY. Must be a valid base58-encoded Solana secret key."
@@ -60,8 +68,25 @@ export function getKeypair(): Keypair {
   }
 }
 
+export function getWalletPublicKey(): PublicKey {
+  return getKeypair().publicKey;
+}
+
 export function getUsdcMint(network: SolanaNetwork): PublicKey {
   return new PublicKey(USDC_MINT[network]);
+}
+
+export async function getUsdcTokenAccountAddress(
+  owner: PublicKey,
+  network: SolanaNetwork
+): Promise<PublicKey> {
+  return getAssociatedTokenAddress(getUsdcMint(network), owner);
+}
+
+export async function getWalletUsdcTokenAccount(
+  network: SolanaNetwork
+): Promise<PublicKey> {
+  return getUsdcTokenAccountAddress(getWalletPublicKey(), network);
 }
 
 export function getExplorerUrl(

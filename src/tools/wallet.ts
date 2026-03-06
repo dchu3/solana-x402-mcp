@@ -1,12 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getAssociatedTokenAddress } from "@solana/spl-token";
 import {
   getConnection,
-  getKeypair,
   getNetwork,
   getUsdcMint,
+  getUsdcTokenAccountAddress,
+  getWalletPublicKey,
   USDC_DECIMALS,
 } from "../config.js";
 
@@ -18,16 +18,15 @@ export function registerWalletTools(server: McpServer) {
     async () => {
       try {
         const network = getNetwork();
-        const keypair = getKeypair();
         const connection = getConnection(network);
-        const publicKey = keypair.publicKey;
+        const publicKey = getWalletPublicKey();
 
         const solBalance = await connection.getBalance(publicKey);
         const usdcMint = getUsdcMint(network);
         let usdcBalance = "0";
 
         try {
-          const ata = await getAssociatedTokenAddress(usdcMint, publicKey);
+          const ata = await getUsdcTokenAccountAddress(publicKey, network);
           const tokenBalance = await connection.getTokenAccountBalance(ata);
           usdcBalance = tokenBalance.value.uiAmountString ?? "0";
         } catch {
@@ -129,7 +128,7 @@ export function registerWalletTools(server: McpServer) {
         let rawAmount = "0";
 
         try {
-          const ata = await getAssociatedTokenAddress(usdcMint, publicKey);
+          const ata = await getUsdcTokenAccountAddress(publicKey, network);
           const tokenBalance = await connection.getTokenAccountBalance(ata);
           usdcBalance = tokenBalance.value.uiAmountString ?? "0";
           rawAmount = tokenBalance.value.amount;

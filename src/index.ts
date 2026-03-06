@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerWalletTools } from "./tools/wallet.js";
 import { registerSendUsdcTool } from "./tools/send-usdc.js";
 import { registerX402PaymentTool } from "./tools/x402-payment.js";
+import { registerIncomingPaymentTool } from "./tools/incoming-payments.js";
 
 const server = new McpServer({
   name: "solana-x402-mcp",
@@ -14,6 +15,7 @@ const server = new McpServer({
 registerWalletTools(server);
 registerSendUsdcTool(server);
 registerX402PaymentTool(server);
+registerIncomingPaymentTool(server);
 
 async function main() {
   if (!process.env.SOLANA_PRIVATE_KEY) {
