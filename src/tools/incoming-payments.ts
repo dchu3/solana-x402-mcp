@@ -113,6 +113,7 @@ type InboundTransferContext = {
   sourceTokenAccount: string | null;
   senders: string[];
   sourceTokenAccounts: string[];
+  instructionAmount: bigint | null;
 };
 
 function findInboundTransferContext(
@@ -120,7 +121,7 @@ function findInboundTransferContext(
   walletUsdcAccount: string,
   usdcMintAddress: string
 ): InboundTransferContext {
-  const matches: Array<{ sender: string | null; sourceTokenAccount: string | null }> = [];
+  const matches: Array<{ sender: string | null; sourceTokenAccount: string | null; amount: bigint | null }> = [];
 
   for (const instruction of flattenParsedInstructions(transaction)) {
     if (instruction.program !== "spl-token") {
@@ -142,11 +143,25 @@ function findInboundTransferContext(
       continue;
     }
 
+    let amount: bigint | null = null;
+    const rawAmount = parsed.info.amount ?? parsed.info.tokenAmount;
+    if (typeof rawAmount === "string") {
+      amount = BigInt(rawAmount);
+    } else if (
+      typeof rawAmount === "object" &&
+      rawAmount !== null &&
+      "amount" in rawAmount &&
+      typeof (rawAmount as Record<string, unknown>).amount === "string"
+    ) {
+      amount = BigInt((rawAmount as Record<string, string>).amount);
+    }
+
     matches.push({
       sourceTokenAccount:
         typeof parsed.info.source === "string" ? parsed.info.source : null,
       sender:
         typeof parsed.info.authority === "string" ? parsed.info.authority : null,
+      amount,
     });
   }
 
@@ -168,11 +183,17 @@ function findInboundTransferContext(
     )
   );
 
+  const allAmountsAvailable = matches.length > 0 && matches.every((m) => m.amount !== null);
+  const instructionAmount = allAmountsAvailable
+    ? matches.reduce((sum, m) => sum + m.amount!, 0n)
+    : null;
+
   return {
     sender: matches.length === 1 ? matches[0].sender : null,
     sourceTokenAccount: matches.length === 1 ? matches[0].sourceTokenAccount : null,
     senders,
     sourceTokenAccounts,
+    instructionAmount,
   };
 }
 
@@ -205,7 +226,7 @@ function parseTokenAmount(value: string, decimals: number): bigint | null {
   return BigInt(normalized);
 }
 
-export function registerIncomingPaymentTools(server: McpServer) {
+export function registerIncomingPaymentTool(server: McpServer) {
   server.tool(
     "get_incoming_usdc_payments",
     "Inspect recent inbound USDC transfers for the configured Solana wallet",
@@ -246,7 +267,7 @@ export function registerIncomingPaymentTools(server: McpServer) {
             content: [
               {
                 type: "text" as const,
-                text: `Error: Invalid minAmount "${minAmount}". Use a positive USDC amount with up to ${USDC_DECIMALS} decimal places.`,
+                text: `Error: Invalid minAmount "${minAmount}". Use a non-negative USDC amount with up to ${USDC_DECIMALS} decimal places.`,
               },
             ],
           };
@@ -287,25 +308,28 @@ export function registerIncomingPaymentTools(server: McpServer) {
             transaction.meta?.postTokenBalances
           );
 
-          const preAmount = preBalance?.amount ?? 0n;
-          const postAmount = postBalance?.amount ?? 0n;
-          const receivedAmount = postAmount - preAmount;
           const decimals = postBalance?.decimals ?? preBalance?.decimals ?? USDC_DECIMALS;
-
-          if (receivedAmount <= 0n || receivedAmount < minimumAmount) {
-            return [];
-          }
 
           const {
             sender,
             sourceTokenAccount,
             senders,
             sourceTokenAccounts,
+            instructionAmount,
           } = findInboundTransferContext(
             transaction,
             walletUsdcAccount.toBase58(),
             usdcMintAddress
           );
+
+          // Prefer summed instruction amounts; fall back to balance delta
+          const balanceDelta = (postBalance?.amount ?? 0n) - (preBalance?.amount ?? 0n);
+          const receivedAmount = instructionAmount ?? (balanceDelta > 0n ? balanceDelta : 0n);
+
+          if (receivedAmount <= 0n || receivedAmount < minimumAmount) {
+            return [];
+          }
+
           const signatureInfo = signatures[index];
           const blockTime = transaction.blockTime ?? signatureInfo?.blockTime ?? null;
 
