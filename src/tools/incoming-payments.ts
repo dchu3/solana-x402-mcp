@@ -4,6 +4,7 @@ import {
   ParsedInstruction,
   ParsedTransactionWithMeta,
   PartiallyDecodedInstruction,
+  TokenBalance,
 } from "@solana/web3.js";
 import { z } from "zod";
 import {
@@ -75,9 +76,7 @@ function getTokenBalanceForAccount(
   transaction: ParsedTransactionWithMeta,
   accountAddress: string,
   mintAddress: string,
-  balances: ParsedTransactionWithMeta["meta"] extends infer _Meta
-    ? NonNullable<ParsedTransactionWithMeta["meta"]>["preTokenBalances"]
-    : never
+  balances: Array<TokenBalance> | null | undefined
 ): AccountTokenBalance | null {
   for (const balance of balances ?? []) {
     const indexedAddress = getAccountAddress(transaction, balance.accountIndex);
