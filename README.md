@@ -1,6 +1,14 @@
-# dex-rugcheck-mcp
+# solana-x402-mcp
 
-A TypeScript MCP (Model Context Protocol) server that exposes the RugCheck API for Solana token analysis.
+An MCP (Model Context Protocol) server that enables AI agents to make USDC payments on Solana via the [x402 protocol](https://github.com/coinbase/x402).
+
+## Features
+
+- **Send USDC** — Transfer USDC to any Solana address
+- **Check USDC Balance** — Query USDC balance for any wallet
+- **Check SOL Balance** — Query SOL balance for any wallet
+- **x402 Payments** — Automatically pay for x402-protected API endpoints with USDC
+- **Wallet Info** — View configured wallet address, balances, and network
 
 ## Installation
 
@@ -8,6 +16,16 @@ A TypeScript MCP (Model Context Protocol) server that exposes the RugCheck API f
 npm install
 npm run build
 ```
+
+## Configuration
+
+Set the following environment variables:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SOLANA_PRIVATE_KEY` | ✅ | — | Base58-encoded Solana private key |
+| `SOLANA_NETWORK` | ❌ | `devnet` | `mainnet` or `devnet` |
+| `SOLANA_RPC_URL` | ❌ | Public RPC | Custom Solana RPC endpoint |
 
 ## Usage
 
@@ -18,9 +36,13 @@ Add to your MCP client configuration:
 ```json
 {
   "mcpServers": {
-    "rugcheck": {
+    "solana-x402": {
       "command": "node",
-      "args": ["/path/to/dex-rugcheck-mcp/dist/index.js"]
+      "args": ["/path/to/solana-x402-mcp/dist/index.js"],
+      "env": {
+        "SOLANA_PRIVATE_KEY": "your-base58-private-key",
+        "SOLANA_NETWORK": "devnet"
+      }
     }
   }
 }
@@ -28,18 +50,82 @@ Add to your MCP client configuration:
 
 ## Tools
 
-### get_token_summary
+### get_wallet_info
 
-Fetches a token report summary from the RugCheck API.
+Get the configured wallet's public key, SOL balance, USDC balance, and current network.
+
+```
+get_wallet_info({})
+```
+
+### get_sol_balance
+
+Check SOL balance for a Solana wallet address.
 
 **Parameters:**
-- `token_address` (string, required): The Solana token contract address
+- `address` (string, required): Solana wallet address
 
-**Example:**
 ```
-get_token_summary({ token_address: "GsNpfDJ4LDprDRj6mJM5YLs3GPAY8SSqWvVNXNCagpQV" })
+get_sol_balance({ address: "So11111111111111111111111111111111111111112" })
 ```
 
-## API Reference
+### get_usdc_balance
 
-This server uses the [RugCheck API](https://api.rugcheck.xyz/v1) to fetch token summaries.
+Check USDC balance for a Solana wallet address.
+
+**Parameters:**
+- `address` (string, required): Solana wallet address
+
+```
+get_usdc_balance({ address: "7nYJKfE1bf6pBP2H2UwMRe5MT4c4GHxfbQqCGTqJNj2c" })
+```
+
+### send_usdc
+
+Send USDC from the configured wallet to a recipient.
+
+**Parameters:**
+- `recipient` (string, required): Recipient Solana wallet address
+- `amount` (string, required): Amount of USDC to send (e.g. `"1.50"`)
+
+```
+send_usdc({ recipient: "7nYJKfE1bf6pBP2H2UwMRe5MT4c4GHxfbQqCGTqJNj2c", amount: "1.50" })
+```
+
+### make_x402_payment
+
+Fetch a resource from an x402-protected endpoint, automatically handling USDC payment on Solana.
+
+**Parameters:**
+- `url` (string, required): The x402-protected endpoint URL
+- `method` (string, optional): HTTP method — `GET`, `POST`, `PUT`, `DELETE` (default: `GET`)
+- `body` (string, optional): JSON request body for POST/PUT
+- `headers` (object, optional): Additional HTTP headers
+
+```
+make_x402_payment({ url: "https://api.example.com/paid-resource" })
+```
+
+## How x402 Works
+
+The [x402 protocol](https://x402.org) uses the HTTP 402 "Payment Required" status code to enable programmatic payments:
+
+1. Client requests a resource from an x402-protected endpoint
+2. Server responds with `402` and payment requirements (amount, token, network)
+3. Client signs a USDC payment on Solana
+4. Client retries the request with the payment proof
+5. Server verifies payment and returns the resource
+
+This MCP server handles steps 2–5 automatically via the `make_x402_payment` tool.
+
+## Development
+
+```bash
+npm install
+npm run build
+npm start
+```
+
+## License
+
+ISC

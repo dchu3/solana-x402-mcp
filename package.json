@@ -1,10 +1,10 @@
 {
-  "name": "dex-rugcheck-mcp",
+  "name": "solana-x402-mcp",
   "version": "1.0.0",
-  "description": "TypeScript RugCheck MCP server",
+  "description": "MCP server for Solana USDC payments via the x402 protocol",
   "main": "dist/index.js",
   "bin": {
-    "dex-rugcheck-mcp": "dist/index.js"
+    "solana-x402-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -12,18 +12,25 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dchu3/dex-rugcheck-mcp.git"
+    "url": "git+https://github.com/dchu3/solana-x402-mcp.git"
   },
-  "keywords": ["mcp", "rugcheck", "solana"],
+  "keywords": ["mcp", "x402", "solana", "usdc", "payment"],
   "author": "",
   "license": "ISC",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/dchu3/dex-rugcheck-mcp/issues"
+    "url": "https://github.com/dchu3/solana-x402-mcp/issues"
   },
-  "homepage": "https://github.com/dchu3/dex-rugcheck-mcp#readme",
+  "homepage": "https://github.com/dchu3/solana-x402-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.2"
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "@solana/web3.js": "^1.98.0",
+    "@solana/spl-token": "^0.4.12",
+    "@x402/core": "^2.6.0",
+    "@x402/svm": "^2.6.0",
+    "@x402/fetch": "^2.6.0",
+    "bs58": "^6.0.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/node": "^25.0.6",
