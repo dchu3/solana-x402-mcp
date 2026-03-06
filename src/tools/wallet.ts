@@ -7,7 +7,6 @@ import {
   getUsdcMint,
   getUsdcTokenAccountAddress,
   getWalletPublicKey,
-  getWalletUsdcTokenAccount,
   USDC_DECIMALS,
 } from "../config.js";
 
@@ -17,20 +16,20 @@ export function registerWalletTools(server: McpServer) {
     "Get the configured wallet's public key, SOL balance, USDC balance, and current network",
     {},
     async () => {
+      try {
+        const network = getNetwork();
+        const connection = getConnection(network);
+        const publicKey = getWalletPublicKey();
+
+        const solBalance = await connection.getBalance(publicKey);
+        const usdcMint = getUsdcMint(network);
+        let usdcBalance = "0";
+
         try {
-          const network = getNetwork();
-          const connection = getConnection(network);
-          const publicKey = getWalletPublicKey();
-
-          const solBalance = await connection.getBalance(publicKey);
-          const usdcMint = getUsdcMint(network);
-          let usdcBalance = "0";
-
-          try {
-            const ata = await getWalletUsdcTokenAccount(network);
-            const tokenBalance = await connection.getTokenAccountBalance(ata);
-            usdcBalance = tokenBalance.value.uiAmountString ?? "0";
-          } catch {
+          const ata = await getUsdcTokenAccountAddress(publicKey, network);
+          const tokenBalance = await connection.getTokenAccountBalance(ata);
+          usdcBalance = tokenBalance.value.uiAmountString ?? "0";
+        } catch {
           // No USDC account exists yet
         }
 

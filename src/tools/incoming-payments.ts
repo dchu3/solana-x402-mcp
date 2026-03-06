@@ -11,8 +11,8 @@ import {
   getExplorerUrl,
   getNetwork,
   getUsdcMint,
+  getUsdcTokenAccountAddress,
   getWalletPublicKey,
-  getWalletUsdcTokenAccount,
   USDC_DECIMALS,
 } from "../config.js";
 
@@ -109,11 +109,20 @@ function flattenParsedInstructions(
   return [...topLevel, ...innerInstructions];
 }
 
+type InboundTransferContext = {
+  sender: string | null;
+  sourceTokenAccount: string | null;
+  senders: string[];
+  sourceTokenAccounts: string[];
+};
+
 function findInboundTransferContext(
   transaction: ParsedTransactionWithMeta,
   walletUsdcAccount: string,
   usdcMintAddress: string
-): { sourceTokenAccount: string | null; authority: string | null } {
+): InboundTransferContext {
+  const matches: Array<{ sender: string | null; sourceTokenAccount: string | null }> = [];
+
   for (const instruction of flattenParsedInstructions(transaction)) {
     if (instruction.program !== "spl-token") {
       continue;
@@ -134,17 +143,37 @@ function findInboundTransferContext(
       continue;
     }
 
-    return {
+    matches.push({
       sourceTokenAccount:
         typeof parsed.info.source === "string" ? parsed.info.source : null,
-      authority:
+      sender:
         typeof parsed.info.authority === "string" ? parsed.info.authority : null,
-    };
+    });
   }
 
+  const senders = Array.from(
+    new Set(
+      matches
+        .map(({ sender }) => sender)
+        .filter((sender): sender is string => sender !== null)
+    )
+  );
+  const sourceTokenAccounts = Array.from(
+    new Set(
+      matches
+        .map(({ sourceTokenAccount }) => sourceTokenAccount)
+        .filter(
+          (sourceTokenAccount): sourceTokenAccount is string =>
+            sourceTokenAccount !== null
+        )
+    )
+  );
+
   return {
-    sourceTokenAccount: null,
-    authority: null,
+    sender: matches.length === 1 ? matches[0].sender : null,
+    sourceTokenAccount: matches.length === 1 ? matches[0].sourceTokenAccount : null,
+    senders,
+    sourceTokenAccounts,
   };
 }
 
@@ -203,7 +232,10 @@ export function registerIncomingPaymentTools(server: McpServer) {
         const network = getNetwork();
         const connection = getConnection(network);
         const walletPublicKey = getWalletPublicKey();
-        const walletUsdcAccount = await getWalletUsdcTokenAccount(network);
+        const walletUsdcAccount = await getUsdcTokenAccountAddress(
+          walletPublicKey,
+          network
+        );
         const usdcMintAddress = getUsdcMint(network).toBase58();
 
         const minimumAmount =
@@ -265,7 +297,12 @@ export function registerIncomingPaymentTools(server: McpServer) {
             return [];
           }
 
-          const { sourceTokenAccount, authority } = findInboundTransferContext(
+          const {
+            sender,
+            sourceTokenAccount,
+            senders,
+            sourceTokenAccounts,
+          } = findInboundTransferContext(
             transaction,
             walletUsdcAccount.toBase58(),
             usdcMintAddress
@@ -285,8 +322,10 @@ export function registerIncomingPaymentTools(server: McpServer) {
               amount: formatTokenAmount(receivedAmount, decimals),
               rawAmount: receivedAmount.toString(),
               decimals,
-              sender: authority,
+              sender,
+              senders,
               sourceTokenAccount,
+              sourceTokenAccounts,
               explorerUrl: getExplorerUrl(signatureInfo.signature, network),
             },
           ];
