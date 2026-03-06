@@ -6,7 +6,6 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import {
-  getAssociatedTokenAddress,
   createTransferCheckedInstruction,
   getAccount,
   createAssociatedTokenAccountInstruction,
@@ -14,6 +13,7 @@ import {
 import {
   getConnection,
   getKeypair,
+  getUsdcTokenAccountAddress,
   getNetwork,
   getUsdcMint,
   getExplorerUrl,
@@ -54,13 +54,13 @@ export function registerSendUsdcTool(server: McpServer) {
         );
 
         const recipientPubkey = new PublicKey(recipient);
-        const senderAta = await getAssociatedTokenAddress(
-          usdcMint,
-          keypair.publicKey
+        const senderAta = await getUsdcTokenAccountAddress(
+          keypair.publicKey,
+          network
         );
-        const recipientAta = await getAssociatedTokenAddress(
-          usdcMint,
-          recipientPubkey
+        const recipientAta = await getUsdcTokenAccountAddress(
+          recipientPubkey,
+          network
         );
 
         const transaction = new Transaction();

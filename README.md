@@ -6,6 +6,7 @@ An MCP (Model Context Protocol) server that enables AI agents to make USDC payme
 
 - **Send USDC** — Transfer USDC to any Solana address
 - **Check USDC Balance** — Query USDC balance for any wallet
+- **Inspect Incoming USDC Payments** — Review recent inbound USDC transfers to the configured wallet
 - **Check SOL Balance** — Query SOL balance for any wallet
 - **x402 Payments** — Automatically pay for x402-protected API endpoints with USDC
 - **Wallet Info** — View configured wallet address, balances, and network
@@ -78,6 +79,19 @@ Check USDC balance for a Solana wallet address.
 
 ```
 get_usdc_balance({ address: "7nYJKfE1bf6pBP2H2UwMRe5MT4c4GHxfbQqCGTqJNj2c" })
+```
+
+### get_incoming_usdc_payments
+
+Inspect recent inbound USDC transfers for the configured wallet.
+
+**Parameters:**
+- `limit` (number, optional): Maximum number of recent wallet USDC-account signatures to inspect (default: `20`)
+- `beforeSignature` (string, optional): Pagination cursor for older transactions
+- `minAmount` (string, optional): Minimum received amount in USDC to include (for example `"1.5"`)
+
+```
+get_incoming_usdc_payments({ limit: 10, minAmount: "1.00" })
 ```
 
 ### send_usdc

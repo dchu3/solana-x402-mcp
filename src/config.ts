@@ -4,6 +4,7 @@ import {
   PublicKey,
   clusterApiUrl,
 } from "@solana/web3.js";
+import { getAssociatedTokenAddress } from "@solana/spl-token";
 import bs58 from "bs58";
 
 export const USDC_MINT: Record<string, string> = {
@@ -60,8 +61,25 @@ export function getKeypair(): Keypair {
   }
 }
 
+export function getWalletPublicKey(): PublicKey {
+  return getKeypair().publicKey;
+}
+
 export function getUsdcMint(network: SolanaNetwork): PublicKey {
   return new PublicKey(USDC_MINT[network]);
+}
+
+export async function getUsdcTokenAccountAddress(
+  owner: PublicKey,
+  network: SolanaNetwork
+): Promise<PublicKey> {
+  return getAssociatedTokenAddress(getUsdcMint(network), owner);
+}
+
+export async function getWalletUsdcTokenAccount(
+  network: SolanaNetwork
+): Promise<PublicKey> {
+  return getUsdcTokenAccountAddress(getWalletPublicKey(), network);
 }
 
 export function getExplorerUrl(

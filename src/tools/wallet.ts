@@ -1,12 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getAssociatedTokenAddress } from "@solana/spl-token";
 import {
   getConnection,
-  getKeypair,
   getNetwork,
   getUsdcMint,
+  getUsdcTokenAccountAddress,
+  getWalletPublicKey,
+  getWalletUsdcTokenAccount,
   USDC_DECIMALS,
 } from "../config.js";
 
@@ -16,21 +17,20 @@ export function registerWalletTools(server: McpServer) {
     "Get the configured wallet's public key, SOL balance, USDC balance, and current network",
     {},
     async () => {
-      try {
-        const network = getNetwork();
-        const keypair = getKeypair();
-        const connection = getConnection(network);
-        const publicKey = keypair.publicKey;
-
-        const solBalance = await connection.getBalance(publicKey);
-        const usdcMint = getUsdcMint(network);
-        let usdcBalance = "0";
-
         try {
-          const ata = await getAssociatedTokenAddress(usdcMint, publicKey);
-          const tokenBalance = await connection.getTokenAccountBalance(ata);
-          usdcBalance = tokenBalance.value.uiAmountString ?? "0";
-        } catch {
+          const network = getNetwork();
+          const connection = getConnection(network);
+          const publicKey = getWalletPublicKey();
+
+          const solBalance = await connection.getBalance(publicKey);
+          const usdcMint = getUsdcMint(network);
+          let usdcBalance = "0";
+
+          try {
+            const ata = await getWalletUsdcTokenAccount(network);
+            const tokenBalance = await connection.getTokenAccountBalance(ata);
+            usdcBalance = tokenBalance.value.uiAmountString ?? "0";
+          } catch {
           // No USDC account exists yet
         }
 
@@ -129,7 +129,7 @@ export function registerWalletTools(server: McpServer) {
         let rawAmount = "0";
 
         try {
-          const ata = await getAssociatedTokenAddress(usdcMint, publicKey);
+          const ata = await getUsdcTokenAccountAddress(publicKey, network);
           const tokenBalance = await connection.getTokenAccountBalance(ata);
           usdcBalance = tokenBalance.value.uiAmountString ?? "0";
           rawAmount = tokenBalance.value.amount;
